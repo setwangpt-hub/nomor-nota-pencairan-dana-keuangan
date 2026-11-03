@@ -349,7 +349,22 @@ function errText(e){const c=e&&e.code;switch(c){
   default:return 'Gagal menghubungi Google Sheets ('+(c||'tidak diketahui')+'). Coba muat ulang.';}}
 function conn(state,txt){$('conn').innerHTML=`<span class="dot ${state}"></span>`+esc(txt);}
 function payload(r){let p=r&&r.payload;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){}}if(p&&!p.values&&r&&r.structuredContent)p=r.structuredContent;return p||{};}
-async function readRange(range,fresh){const r=await MCP.callTool(GS,'get_values',{spreadsheetId:SID,range},{cache:fresh?false:{staleTime:60000,gcTime:600000}});return payload(r).values||[];}
+/* Baca publik: sheet bisa dibaca siapa saja yang punya tautan, jadi arsip & cetak tetap jalan tanpa Apps Script */
+const GID={'NPD 2026':'662009166','NODIN 2026':'1879413287'};let READONLY=false;
+function parseCSV(t){const R=[];let row=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];
+  if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+  else if(c==='"')q=true;else if(c===','){row.push(f);f='';}else if(c==='\n'){row.push(f);R.push(row);row=[];f='';}else if(c!=='\r')f+=c;}
+  if(f!==''||row.length){row.push(f);R.push(row);}return R;}
+const colN=L=>[...L].reduce((n,ch)=>n*26+ch.charCodeAt(0)-64,0);
+const CSVC={};
+async function csvRange(range,fresh){const m=String(range).match(/^'?(.+?)'?!([A-Z]+)(\d+):([A-Z]+)(\d*)$/);if(!m||!GID[m[1]])throw {code:'bad_request',message:range};
+  const key=m[1];let all=CSVC[key];
+  if(fresh||!all||Date.now()-all.t>60000){let r;try{r=await fetch(`https://docs.google.com/spreadsheets/d/${SID}/export?format=csv&gid=${GID[key]}`,{cache:'no-store'});}catch(e){throw {code:'server_unavailable',message:String(e)};}
+    if(!r.ok)throw {code:'tool_error',message:'Sheet '+key+' tidak bisa dibaca publik (HTTP '+r.status+')'};all=CSVC[key]={t:Date.now(),v:parseCSV(await r.text())};}
+  const c1=colN(m[2])-1,c2=colN(m[4]),r1=+m[3]-1,r2=m[5]?+m[5]:all.v.length;
+  const V=all.v.slice(r1,r2).map(r=>r.slice(c1,c2));while(V.length&&V[V.length-1].every(x=>x===''))V.pop();return V;}
+async function readRange(range,fresh){if(MCP){try{const r=await MCP.callTool(GS,'get_values',{spreadsheetId:SID,range},{cache:fresh?false:{staleTime:60000,gcTime:600000}});return payload(r).values||[];}catch(e){try{return await csvRange(range,fresh);}catch(_){throw e;}}}
+  return csvRange(range,fresh);}
 
 /* ---------- NPD sheet ---------- */
 function parseNPD(V){let lastRow=1,lastNum=null,lastDate=null;const rows=[];
@@ -360,7 +375,7 @@ function parseNPD(V){let lastRow=1,lastNum=null,lastDate=null;const rows=[];
   return {rows,lastRow,lastNum,lastDate,nextRow:lastRow+1,nextNum:lastRow+1-off,last:rows[rows.length-1]||null};}
 function npdNo(n){return pad3(n)+'/KPA/KEU/2026';}
 
-async function loadNPD(fresh){try{const V=await readRange(R_NPD,fresh);NPD=parseNPD(V);conn('on','Terhubung ke Google Sheets');renderStamp();renderLast();renderArsip();renderCetak();if(CUR)renderNod();}
+async function loadNPD(fresh){try{const V=await readRange(R_NPD,fresh);NPD=parseNPD(V);conn('on',MCP?'Terhubung ke Google Sheets':'Terhubung ke Google Sheets (hanya baca)');renderStamp();renderLast();renderArsip();renderCetak();if(CUR)renderNod();}
   catch(e){conn('bad','Tidak terhubung');showErr(errText(e));$('st-why').textContent='Nomor terakhir belum bisa dibaca.';$('ar-rows').innerHTML=`<tr><td colspan="7" class="empty">${esc(errText(e))}</td></tr>`;}}
 
 /* ---------- NODIN sheet ---------- */
@@ -412,7 +427,7 @@ function hideMsgs(){$('err').hidden=true;$('done').hidden=true;}
 function showErr(t){$('err').textContent=t;$('err').hidden=false;}
 
 function collect(){const h=CUR&&CUR.hit;return {nodin:h?CUR.key:'',i:h?subIdx(h.sub):-1,rek:h?String(h.rek||'').trim():'',nilai:pnum($('nilai').value),uraian:$('uraian').value.trim(),email:EMAIL,d:inputDate()};}
-$('frm').addEventListener('submit',e=>{e.preventDefault();hideMsgs();if(!MCP){showErr('Google Sheets belum terhubung, nomor belum bisa diambil.');return;}if(!NPD){showErr('Nomor terakhir belum terbaca. Tunggu sampai sheet NPD 2026 termuat.');return;}
+$('frm').addEventListener('submit',e=>{e.preventDefault();hideMsgs();if(!MCP){showErr('Arsip sudah terbaca, tetapi untuk mengambil nomor NPD baru (menulis ke sheet) URL Web App Apps Script perlu ditempel di panel Sambungan Google Sheets.');return;}if(!NPD){showErr('Nomor terakhir belum terbaca. Tunggu sampai sheet NPD 2026 termuat.');return;}
   if(!CUR||!CUR.hit||normSeq($('nodin').value)!==CUR.key){showErr('Panggil dulu nomor nota dinas yang ditemukan, lalu isi nilai dan uraian realisasi.');$('nodin').focus();return;}
   const c=collect();if(c.i<0){showErr('Sub kegiatan nodin tidak dikenali, NPD belum bisa dibuat.');return;}if(!c.rek||c.rek==='-'){showErr('Nodin belum mencantumkan kode rekening, NPD belum bisa dibuat.');return;}
   const miss=[];if(!c.nilai)miss.push('nilai realisasi');if(!c.uraian)miss.push('uraian realisasi');
@@ -499,12 +514,12 @@ function npdDoc(r){const p=CS.jenis==='p';const keg=r.keg||kegOf(r.si);const sub
    <tr><td class="l">Program</td><td class="c">:</td><td>4.02.01 PROGRAM PENUNJANG URUSAN PEMERINTAHAN DAERAH PROVINSI</td></tr>
    <tr><td class="l">Kegiatan</td><td class="c">:</td><td>${esc(keg)}</td></tr>
    <tr><td class="l">Sub Kegiatan</td><td class="c">:</td><td>${esc(sub)}</td></tr>
-   <tr><td class="l">No. DPA</td><td class="c">:</td><td>DPPA/A.3/4.02.0.00.0.00.01.0000/001/2026</td></tr>
+   <tr><td class="l">No. DPA</td><td class="c">:</td><td>DPA/A.2/4.02.0.00.0.00.01.0000/001/2026</td></tr>
    <tr><td class="l">Tahun Anggaran</td><td class="c">:</td><td>2026</td></tr>
   </table>
   <div class="rb"><span>Rincian Belanja</span><span>:</span><span></span></div>
   <table class="rinci"><thead><tr><th style="width:6%">No</th><th style="width:17%">Kode Rekening</th><th style="width:21%">Uraian</th><th style="width:21%">Anggaran</th><th style="width:12%">Sisa Anggaran</th><th style="width:13%">Pencairan</th></tr></thead>
-   <tbody><tr class="body"><td style="text-align:center">1</td><td>${esc(r.rek)}</td><td class="ur">${esc(r.uraian)}</td><td class="r"></td><td class="r"></td><td class="r">${nf(r.nilai)}</td></tr>
+   <tbody><tr class="body"><td style="text-align:center">1</td><td>${esc(r.rek)}</td><td class="ur">${esc(r.uraian)}</td><td class="r">0</td><td class="r"></td><td class="r">${nf(r.nilai)}</td></tr>
    <tr><td colspan="2">Jumlah</td><td></td><td></td><td></td><td class="r">${nf(r.nilai)}</td></tr></tbody></table>
   <div class="ttd"><div>Disetujui Oleh,<br>Pengguna Anggaran<br>Kuasa Pengguna Anggaran<div class="sp"></div><div class="nm">${esc(SIGN.ka)}</div>${esc(SIGN.ag)}<br>${esc(SIGN.an)}</div>
    <div>Disiapkan Oleh,<br>Pejabat Pelaksana Teknis Kegiatan<br>&nbsp;<div class="sp"></div><div class="nm">${esc(SIGN.kp)}</div>${esc(SIGN.pg)}<br>${esc(SIGN.pn)}</div></div>
@@ -560,8 +575,6 @@ $('gas-save').onclick=()=>{const u=$('gas-url').value.trim();if(!/^https:\/\/scr
 (async()=>{try{MCP=window.claude&&window.claude.use?await window.claude.use('mcp'):null;}catch(e){MCP=null;}
   if(!MCP&&!window.claude&&gasUrl()){MCP=gasShim(gasUrl());$('gas-k').textContent='Terhubung lewat Apps Script. Ganti URL di bawah bila Web App di-deploy ulang.';}
   if(window.claude)$('gas-panel').hidden=true;
-  if(!MCP){conn('bad','Google Sheets belum tersambung');showErr('Halaman ini membaca dan menulis sheet Register Nomor Nota Dinas. Tempel URL Web App Apps Script di panel Sambungan Google Sheets.');
-    $('st-why').textContent='Nomor terakhir belum bisa dibaca.';$('ar-rows').innerHTML='<tr><td colspan="7" class="empty">Arsip tampil setelah Google Sheets terhubung.</td></tr>';return;}
   await loadNPD(false);loadNOD(false).then(()=>{if(CUR)findNodin();});})();
 </script>
 
