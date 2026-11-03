@@ -210,12 +210,12 @@ details.set summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--
         <h3>NPD terakhir</h3>
         <dl class="kv" id="last"><dt>–</dt><dd>Memuat…</dd></dl>
       </div>
-      <div class="panel" id="gas-panel">
+      <div class="panel" id="gas-panel" hidden>
         <h3>Sambungan Google Sheets</h3>
         <p class="lead" id="gas-k">Tempel URL Web App Apps Script (berakhiran /exec) dari spreadsheet Register Nomor Nota Dinas. Petunjuknya ada di README repositori.</p>
         <div class="call"><input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:13px"><button type="button" class="btn sm" id="gas-save">Simpan</button></div>
       </div>
-      <div class="panel">
+      <div class="panel" hidden>
         <h3>Aturan penomoran</h3>
         <ol class="lead" style="padding-left:18px;margin:0;display:grid;gap:6px">
           <li>Nomor NPD melanjutkan nomor terakhir di sheet <b>NPD 2026</b>, format <span class="mono">000/KPA/KEU/2026</span>.</li>
@@ -223,7 +223,7 @@ details.set summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--
           <li>Tanggal NPD otomatis tanggal hari ini; sub kegiatan dan kode rekening mengikuti nodin yang dipanggil.</li>
         </ol>
       </div>
-      <div class="panel">
+      <div class="panel" hidden>
         <h3>Nodin baru dari aplikasi</h3>
         <p class="lead" id="bk-k">Nomor nodin yang diambil di aplikasi Nomor Nodin setelah 3 November tersimpan di browser aplikasi itu. Muat file cadangannya (.json, tombol "Unduh cadangan data" di tab Arsip) agar nomor itu bisa dipanggil di sini.</p>
         <div class="row"><label class="btn sm ghost" for="bk-up">Muat cadangan nodin (.json)</label><input type="file" id="bk-up" accept=".json,application/json" hidden><button type="button" class="btn sm ghost" id="bk-clr" hidden>Hapus cadangan</button></div>
@@ -581,7 +581,8 @@ $('gas-url').value=gasUrl();
 $('gas-save').onclick=()=>{const u=$('gas-url').value.trim();if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(u)){toast('URL harus berupa URL Web App Apps Script yang berakhiran /exec');return;}LS.set('npd-gas-url',u);location.reload();};
 (async()=>{try{MCP=window.claude&&window.claude.use?await window.claude.use('mcp'):null;}catch(e){MCP=null;}
   if(!MCP&&!window.claude&&gasUrl()){MCP=gasShim(gasUrl());$('gas-k').textContent='Terhubung lewat Apps Script. Ganti URL di bawah bila Web App di-deploy ulang.';}
-  if(window.claude)$('gas-panel').hidden=true;
+  /* panel sambungan disembunyikan; buka dengan ?sambungan di URL */
+  $('gas-panel').hidden=!!window.claude||!/sambungan/.test(location.search);
   await loadNPD(false);loadNOD(false).then(()=>{if(CUR)findNodin();});})();
 </script>
 
