@@ -4,31 +4,33 @@ Aplikasi penomoran Nota Pencairan Dana (NPD) Bagian Program dan Keuangan, Sekret
 
 ## Fitur
 
-- **Buat NPD**: panggil nomor urut nota dinas. Sub kegiatan dan kode rekening diambil dari sheet NODIN 2026, lalu Anda isi nilai dan uraian realisasi. Nomor NPD otomatis melanjutkan nomor terakhir di sheet NPD 2026 dengan format `000/KPA/KEU/2026`, dan tanggalnya otomatis hari ini.
-- **Arsip NPD 2026**: semua NPD sejak 001 (Januari 2026) dengan filter bulan, sub kegiatan dan pencarian, total nilai, dan tombol salin ke Excel.
+- **Buat NPD**: panggil nomor urut nota dinas. Sub kegiatan dan kode rekening diambil dari data nodin, lalu Anda isi nilai, uraian realisasi, dan nama penginput. Nomor NPD otomatis melanjutkan nomor terakhir dengan format `000/KPA/KEU/2026`, dan tanggalnya otomatis hari ini.
+- **Arsip NPD 2026**: semua NPD sejak 001 (Januari 2026) dengan filter bulan, sub kegiatan dan pencarian, total nilai, dan tombol salin ke Excel. NPD yang baru disimpan langsung tercatat di sini dan terbaca di semua browser.
 - **NPD Siap Cetak**: pratinjau NPD ukuran A4. Tombol Cetak langsung membuka dialog printer, dan beberapa NPD bisa dicetak sekaligus.
 
 ## Sumber data
 
-Spreadsheet **Register Nomor Nota Dinas** (sheet `NPD 2026` dan `NODIN 2026`), dibaca dan ditulis lewat Google Apps Script Web App di folder `apps-script/`.
+Aplikasi ini tidak lagi tersambung ke sheet `NPD 2026` maupun `NODIN 2026`.
 
-## Memasang Apps Script (sekali saja)
+- **Arsip bawaan**: NPD 001–110 dan nodin 001–378 disalin dari spreadsheet per 9 November 2026 dan disimpan di dalam `index.html`.
+- **Penyimpanan bersama**: NPD baru disimpan di tab `APP NPD 2026` lewat Apps Script yang sama dengan aplikasi Nomor Nodin, sehingga terbaca di semua browser dan perangkat. Nodin baru dibaca dari tab `APP NODIN 2026` milik aplikasi Nomor Nodin.
 
-1. Buka spreadsheet Register Nomor Nota Dinas, lalu pilih **Ekstensi → Apps Script**.
-2. Buat file skrip baru, salin isi `apps-script/Code.gs`, lalu simpan.
-3. Di **Setelan proyek**, set zona waktu ke `Asia/Jakarta`.
-4. Pilih **Terapkan → Deployment baru → Aplikasi web**.
-   - Jalankan sebagai: **Saya**
-   - Yang memiliki akses: **Siapa saja**
-5. Izinkan akses, lalu salin **URL aplikasi web** (berakhiran `/exec`).
-6. Buka halaman aplikasi ini, tempel URL tadi di panel **Sambungan Google Sheets**, lalu tekan **Simpan**.
+Formulir Google untuk NPD sebaiknya ditutup agar nomor tidak dobel, karena isian formulir tidak lagi dibaca aplikasi.
 
-Catatan: siapa pun yang mengetahui URL Web App bisa membaca sheet NPD 2026 dan NODIN 2026 serta menambah baris NPD. Bagikan URL itu hanya kepada pengguna internal. Skrip hanya mengizinkan penulisan ke kolom B:W sheet NPD 2026, pada baris yang masih kosong.
+## Memperbarui Apps Script (sekali saja)
+
+Kode di `apps-script/Code.gs` adalah versi gabungan untuk aplikasi Nomor Nodin dan NPD (sama dengan `apps-script/Code.gs` di repositori nomor-nodin-keuangan).
+
+1. Buka spreadsheet Register Nomor Nota Dinas, pilih **Ekstensi → Apps Script**.
+2. Ganti seluruh isi `Code.gs` dengan isi `apps-script/Code.gs`, lalu simpan.
+3. Pilih **Terapkan → Kelola deployment**, klik ikon pensil pada deployment yang ada, pilih **Versi: Versi baru**, lalu **Terapkan**. URL Web App tetap sama, jadi aplikasi Nomor Nodin tidak perlu diubah.
+
+Sebelum langkah ini dilakukan, arsip dan cetak tetap jalan, tetapi tombol simpan NPD menampilkan pesan bahwa Apps Script belum diperbarui.
 
 ## Struktur
 
 ```
-index.html              aplikasi (GitHub Pages)
-apps-script/Code.gs     backend Web App
+index.html              aplikasi (GitHub Pages), berisi arsip bawaan
+apps-script/Code.gs     backend Web App gabungan Nomor Nodin + NPD
 apps-script/appsscript.json
 ```
