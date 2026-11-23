@@ -5,32 +5,29 @@ Aplikasi penomoran Nota Pencairan Dana (NPD) Bagian Program dan Keuangan, Sekret
 ## Fitur
 
 - **Buat NPD**: panggil nomor urut nota dinas. Sub kegiatan dan kode rekening diambil dari data nodin, lalu Anda isi nilai, uraian realisasi, dan nama penginput. Nomor NPD otomatis melanjutkan nomor terakhir dengan format `000/KPA/KEU/2026`, dan tanggalnya otomatis hari ini.
-- **Arsip NPD 2026**: semua NPD sejak 001 (Januari 2026) dengan filter bulan, sub kegiatan dan pencarian, total nilai, dan tombol salin ke Excel. NPD yang baru disimpan langsung tercatat di sini dan terbaca di semua browser.
+- **Arsip NPD 2026**: semua NPD sejak 001 (Januari 2026) dengan filter bulan, sub kegiatan dan pencarian, total nilai, dan tombol salin ke Excel. NPD yang baru disimpan oleh siapa pun otomatis muncul di sini dan di NPD Siap Cetak pada semua browser (sinkron otomatis setiap 15 detik, tanpa muat ulang).
 - **NPD Siap Cetak**: pratinjau NPD ukuran A4. Tombol Cetak langsung membuka dialog printer, dan beberapa NPD bisa dicetak sekaligus.
 
 ## Sumber data
 
-Aplikasi ini tidak lagi tersambung ke sheet `NPD 2026` maupun `NODIN 2026`.
+Aplikasi ini **tidak tersambung ke spreadsheet mana pun** untuk NPD (sheet `NPD 2026` tidak dibaca dan tidak ditulis).
 
-- **Arsip bawaan**: NPD 001–110 dan nodin 001–378 disalin dari spreadsheet per 9 November 2026 dan disimpan di dalam `index.html`.
-- **Penyimpanan bersama**: NPD baru disimpan di tab `APP NPD 2026` lewat Apps Script yang sama dengan aplikasi Nomor Nodin, sehingga terbaca di semua browser dan perangkat. Nodin baru dibaca dari tab `APP NODIN 2026` milik aplikasi Nomor Nodin.
+- **Arsip bawaan**: NPD 001–110 dan nodin 001–378 disalin dari spreadsheet per 9 November 2026 dan disimpan di dalam `index.html`. Nomor-nomor ini tidak berubah.
+- **Penyimpanan bersama NPD baru (111 dst.)**: proyek Apps Script mandiri **"Nomor NPD Keuangan - Penyimpanan"** di akun setwangpt@gmail.com (kode di `apps-script/Code.gs`). Data disimpan di Script Properties proyek itu, bukan di spreadsheet, sehingga terbaca di semua browser dan perangkat. Penomoran dikunci di server, jadi dua orang yang menyimpan bersamaan tidak mendapat nomor yang sama.
+- **Nodin baru (379 dst.)**: hanya *dibaca* dari Web App aplikasi Nomor Nodin agar sub kegiatan dan rekeningnya bisa dipanggil. Aplikasi NPD tidak menulis apa pun ke sana.
 
-Formulir Google untuk NPD sebaiknya ditutup agar nomor tidak dobel, karena isian formulir tidak lagi dibaca aplikasi.
+Formulir Google untuk NPD sebaiknya ditutup agar nomor tidak dobel, karena isian formulir tidak dibaca aplikasi.
 
-## Memperbarui Apps Script (sekali saja)
+## Memasang ulang penyimpanan (bila perlu)
 
-Kode di `apps-script/Code.gs` adalah versi gabungan untuk aplikasi Nomor Nodin dan NPD (sama dengan `apps-script/Code.gs` di repositori nomor-nodin-keuangan).
-
-1. Buka spreadsheet Register Nomor Nota Dinas, pilih **Ekstensi → Apps Script**.
-2. Ganti seluruh isi `Code.gs` dengan isi `apps-script/Code.gs`, lalu simpan.
-3. Pilih **Terapkan → Kelola deployment**, klik ikon pensil pada deployment yang ada, pilih **Versi: Versi baru**, lalu **Terapkan**. URL Web App tetap sama, jadi aplikasi Nomor Nodin tidak perlu diubah.
-
-Sebelum langkah ini dilakukan, arsip dan cetak tetap jalan, tetapi tombol simpan NPD menampilkan pesan bahwa Apps Script belum diperbarui.
+1. Buka script.google.com → **Proyek baru**, tempel isi `apps-script/Code.gs`, simpan.
+2. **Terapkan → Deployment baru → Aplikasi web**, Jalankan sebagai: Saya, Yang memiliki akses: Siapa saja.
+3. Salin URL Web App ke konstanta `API_NPD` di `index.html`.
 
 ## Struktur
 
 ```
 index.html              aplikasi (GitHub Pages), berisi arsip bawaan
-apps-script/Code.gs     backend Web App gabungan Nomor Nodin + NPD
+apps-script/Code.gs     backend penyimpanan NPD mandiri (tanpa spreadsheet)
 apps-script/appsscript.json
 ```
